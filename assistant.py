@@ -136,7 +136,7 @@ class Assistant:
 
 webcam_stream = WebcamStream().start()
 
-model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest")
+model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest") #comment out to use particular models
 
 # You can use OpenAI's GPT-4o model instead of Gemini Flash
 # by uncommenting the following line:
@@ -169,3 +169,4 @@ while True:
 webcam_stream.stop()
 cv2.destroyAllWindows()
 stop_listening(wait_for_stop=False)
+#use di

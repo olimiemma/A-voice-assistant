@@ -1,4 +1,4 @@
-# Sample AI assistant
+# Olimi's AI assistant
 
 You need an `OPENAI_API_KEY` and a `GOOGLE_API_KEY` to run this code. Store them in a `.env` file in the root directory of the project, or set them as environment variables. I've added and edited alot from Santiago's original code,so got his git for tne original code.
 

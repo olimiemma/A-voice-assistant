@@ -108,4 +108,4 @@ Note: The script uses Whisper for speech recognition and OpenAI's API for text-t
 Also, the script is set up to use Google's Gemini Flash model by default. If you want to use OpenAI's GPT-4o model instead, uncomment the line `# model = ChatOpenAI(model="gpt-4o")` and comment out the line `model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest")`.
 
 
-Let me know if you have any other questions or need further assistance!
+https://www.linkedin.com/in/olimiemma/

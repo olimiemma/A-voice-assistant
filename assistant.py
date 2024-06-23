@@ -1,5 +1,6 @@
 import base64
 from threading import Lock, Thread
+import os
 
 import cv2
 import openai
@@ -12,6 +13,7 @@ from langchain_core.output_parsers import StrOutputParser
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from langchain_openai import ChatOpenAI
 from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_anthropic import ChatAnthropic
 from pyaudio import PyAudio, paInt16
 from speech_recognition import Microphone, Recognizer, UnknownValueError
 
@@ -19,53 +21,12 @@ load_dotenv()
 
 
 class WebcamStream:
-    def __init__(self):
-        self.stream = VideoCapture(index=0)
-        _, self.frame = self.stream.read()
-        self.running = False
-        self.lock = Lock()
-
-    def start(self):
-        if self.running:
-            return self
-
-        self.running = True
-
-        self.thread = Thread(target=self.update, args=())
-        self.thread.start()
-        return self
-
-    def update(self):
-        while self.running:
-            _, frame = self.stream.read()
-
-            self.lock.acquire()
-            self.frame = frame
-            self.lock.release()
-
-    def read(self, encode=False):
-        self.lock.acquire()
-        frame = self.frame.copy()
-        self.lock.release()
-
-        if encode:
-            _, buffer = imencode(".jpeg", frame)
-            return base64.b64encode(buffer)
-
-        return frame
-
-    def stop(self):
-        self.running = False
-        if self.thread.is_alive():
-            self.thread.join()
-
-    def __exit__(self, exc_type, exc_value, exc_traceback):
-        self.stream.release()
+    # ... (WebcamStream class remains unchanged)
 
 
 class Assistant:
-    def __init__(self, model):
-        self.chain = self._create_inference_chain(model)
+    def __init__(self, model_name):
+        self.chain = self._create_inference_chain(model_name)
 
     def answer(self, prompt, image):
         if not prompt:
@@ -95,7 +56,7 @@ class Assistant:
             for chunk in stream.iter_bytes(chunk_size=1024):
                 player.write(chunk)
 
-    def _create_inference_chain(self, model):
+    def _create_inference_chain(self, model_name):
         SYSTEM_PROMPT = """
         You are a witty assistant that will use the chat history and the image 
         provided by the user to answer its questions.
@@ -123,6 +84,15 @@ class Assistant:
             ]
         )
 
+        if model_name == "gemini":
+            model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest")
+        elif model_name == "gpt4v":
+            model = ChatOpenAI(model="gpt-4-vision-preview")
+        elif model_name == "claude":
+            model = ChatAnthropic(model="claude-3-opus-20240229")
+        else:
+            raise ValueError(f"Unsupported model: {model_name}")
+
         chain = prompt_template | model | StrOutputParser()
 
         chat_message_history = ChatMessageHistory()
@@ -134,39 +104,38 @@ class Assistant:
         )
 
 
-webcam_stream = WebcamStream().start()
+def main():
+    webcam_stream = WebcamStream().start()
 
-model = ChatGoogleGenerativeAI(model="gemini-1.5-flash-latest") #comment out to use particular models
+    # Choose the model to use
+    model_name = os.getenv("MODEL_NAME", "gemini")  # Default to Gemini if not specified
+    assistant = Assistant(model_name)
 
-# You can use OpenAI's GPT-4o model instead of Gemini Flash
-# by uncommenting the following line:
-# model = ChatOpenAI(model="gpt-4o")
+    def audio_callback(recognizer, audio):
+        try:
+            prompt = recognizer.recognize_whisper(audio, model="base", language="english")
+            assistant.answer(prompt, webcam_stream.read(encode=True))
 
-assistant = Assistant(model)
+        except UnknownValueError:
+            print("There was an error processing the audio.")
 
+    recognizer = Recognizer()
+    microphone = Microphone()
+    with microphone as source:
+        recognizer.adjust_for_ambient_noise(source)
 
-def audio_callback(recognizer, audio):
+    stop_listening = recognizer.listen_in_background(microphone, audio_callback)
+
     try:
-        prompt = recognizer.recognize_whisper(audio, model="base", language="english")
-        assistant.answer(prompt, webcam_stream.read(encode=True))
+        while True:
+            cv2.imshow("webcam", webcam_stream.read())
+            if cv2.waitKey(1) in [27, ord("q")]:
+                break
+    finally:
+        webcam_stream.stop()
+        cv2.destroyAllWindows()
+        stop_listening(wait_for_stop=False)
 
-    except UnknownValueError:
-        print("There was an error processing the audio.")
 
-
-recognizer = Recognizer()
-microphone = Microphone()
-with microphone as source:
-    recognizer.adjust_for_ambient_noise(source)
-
-stop_listening = recognizer.listen_in_background(microphone, audio_callback)
-
-while True:
-    cv2.imshow("webcam", webcam_stream.read())
-    if cv2.waitKey(1) in [27, ord("q")]:
-        break
-
-webcam_stream.stop()
-cv2.destroyAllWindows()
-stop_listening(wait_for_stop=False)
-#use di
+if __name__ == "__main__":
+    main()

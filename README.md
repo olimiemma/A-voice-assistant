@@ -1,7 +1,7 @@
 # AI assistant
 # I've added and edited alot from Santiago's original code,so go to his git for the original code.
-# You might need to install a few things so get ready for that. But I tried this myself, it runs.
-# Can now use Claude's API as well as an option
+# You might need to install a few things so get ready for that.
+# I added the ability to use Claude's API as well, as an option
 
 You need an `OPENAI_API_KEY` and a `GOOGLE_API_KEY` to run this code. Store them in a `.env` file in the root directory of the project, or set them as environment variables. 
 
